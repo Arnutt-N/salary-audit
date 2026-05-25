@@ -10,9 +10,6 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
-    services:
-      # No PostgreSQL needed — SQLite via Prisma is self-contained
-
     steps:
       - uses: actions/checkout@v4
 
