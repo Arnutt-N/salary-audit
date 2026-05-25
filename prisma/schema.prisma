@@ -1,0 +1,235 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// ─── Persons (ข้าราชการ) ───
+model Person {
+  id                          Int      @id @default(autoincrement())
+  citizenId                   String?  @map("citizen_id")
+  nameTitle                   String?  @map("name_title")
+  firstName                   String?  @map("first_name")
+  lastName                    String?  @map("last_name")
+  currentPositionName         String?  @map("current_position_name")
+  currentPositionType         String?  @map("current_position_type")
+  currentPositionLevel        String?  @map("current_position_level")
+  currentBureau               String?  @map("current_bureau")
+  currentDivision             String?  @map("current_division")
+  currentDepartment           String?  @map("current_department")
+  currentMinistry             String?  @map("current_ministry")
+  currentSalary               Float?   @map("current_salary")
+  salarySystemType            String?  @map("salary_system_type")
+  currentQualification        String?  @map("current_qualification")
+  qualificationEffectiveDate  String?  @map("qualification_effective_date")
+  isActive                    Boolean  @default(true) @map("is_active")
+  createdAt                   DateTime @default(now()) @map("created_at")
+
+  orders                      Order[]
+  salaryAdjustments           SalaryAdjustmentApplicant[]
+  educationAdjustments        EmployeeEducationAdjustment[]
+  changeLogs                  EmployeeChangeLog[]
+  compensationRounds          CompensationRound[]
+  compensationToSalary        CompensationToSalary[]
+
+  @@map("persons")
+}
+
+// ─── Orders (คำสั่ง) ───
+model Order {
+  id                 Int      @id @default(autoincrement())
+  employeeId         Int      @map("employee_id")
+  batchId            Int?     @map("batch_id")
+  orderType          String   @map("order_type")
+  orderNo            String?  @map("order_no")
+  issueDate          String   @map("issue_date")
+  effectiveDate      String   @map("effective_date")
+
+  // Data Snapshot
+  salary           Float?   @map("salary")
+  salaryAsOfDate   String?  @map("salary_as_of_date")
+  salarySystemType String?  @map("salary_system_type")
+
+  positionName  String? @map("position_name")
+  positionType  String? @map("position_type")
+  positionLevel String? @map("position_level")
+  bureau        String?
+  division      String?
+  department    String?
+  ministry      String?
+
+  // Freshness Status
+  statusSalary   String  @default("latest") @map("status_salary")
+  statusPosition String  @default("latest") @map("status_position")
+  statusType     String  @default("latest") @map("status_type")
+  statusLevel    String  @default("latest") @map("status_level")
+  statusOrg      String  @default("latest") @map("status_org")
+
+  // Correction Chain
+  correctedById Int?  @map("corrected_by_id")
+  correctedFrom Int?  @map("corrected_from")
+  correctedBy   Order? @relation("CorrectionChain", fields: [correctedById], references: [id])
+  corrected     Order[] @relation("CorrectionChain")
+
+  // Lifecycle
+  orderStatus       String    @default("draft") @map("order_status")
+  statusChangedAt   DateTime? @map("status_changed_at")
+  statusChangedBy   String?   @map("status_changed_by")
+  previewExpiresAt  DateTime? @map("preview_expires_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  person             Person  @relation(fields: [employeeId], references: [id])
+  batch              OrderBatch? @relation(fields: [batchId], references: [id])
+  changeLogs         EmployeeChangeLog[]
+  compensationSalary CompensationToSalary[]
+
+  @@index([employeeId, effectiveDate])
+  @@index([orderStatus])
+  @@map("orders")
+}
+
+// ─── Salary Base Adjustments (ปรับอัตราทั่วประเทศ) ───
+model SalaryBaseAdjustment {
+  id          Int     @id @default(autoincrement())
+  adjustDate  String  @map("adjust_date")
+  description String?
+  multiplier  Float?
+  isActive    Boolean @default(true) @map("is_active")
+
+  applicants SalaryAdjustmentApplicant[]
+
+  @@map("salary_base_adjustments")
+}
+
+// ─── Salary Adjustment Applicants (ผู้เข้าเกณฑ์ปรับ) ───
+model SalaryAdjustmentApplicant {
+  id           Int    @id @default(autoincrement())
+  adjustmentId Int    @map("adjustment_id")
+  employeeId   Int    @map("employee_id")
+  oldSalary    Float? @map("old_salary")
+  newSalary    Float? @map("new_salary")
+
+  adjustment SalaryBaseAdjustment @relation(fields: [adjustmentId], references: [id])
+  person     Person               @relation(fields: [employeeId], references: [id])
+
+  @@unique([adjustmentId, employeeId])
+  @@map("salary_adjustment_applicants")
+}
+
+// ─── Education Adjustments (ปรับวุฒิการศึกษา) ───
+model EmployeeEducationAdjustment {
+  id                    Int     @id @default(autoincrement())
+  employeeId            Int     @map("employee_id")
+  oldEducation          String? @map("old_education")
+  newEducation          String? @map("new_education")
+  councilApprovalDate   String  @map("council_approval_date")
+  orderId               Int?    @map("order_id")
+  oldSalary             Float?  @map("old_salary")
+  newSalary             Float?  @map("new_salary")
+  createdAt             DateTime @default(now()) @map("created_at")
+
+  person Person @relation(fields: [employeeId], references: [id])
+
+  @@map("employee_education_adjustments")
+}
+
+// ─── Change Log (บันทึกการเปลี่ยนแปลง) ───
+model EmployeeChangeLog {
+  id            Int      @id @default(autoincrement())
+  employeeId    Int      @map("employee_id")
+  changeType    String   @map("change_type")
+  effectiveDate String?  @map("effective_date")
+  orderId       Int?     @map("order_id")
+  oldValue      String?  @map("old_value")
+  newValue      String?  @map("new_value")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  person Person @relation(fields: [employeeId], references: [id])
+  order  Order? @relation(fields: [orderId], references: [id])
+
+  @@map("employee_change_log")
+}
+
+// ─── Compensation Rounds (รอบค่าตอบแทน) ───
+model CompensationRound {
+  id            Int     @id @default(autoincrement())
+  employeeId    Int     @map("employee_id")
+  roundLabel    String  @map("round_label")
+  roundStart    String  @map("round_start")
+  roundEnd      String  @map("round_end")
+  monthlyAmount Float   @map("monthly_amount")
+  totalRound    Float   @map("total_round")
+  isAtCap       Boolean @default(true) @map("is_at_cap")
+  status        String  @default("active")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  person         Person                    @relation(fields: [employeeId], references: [id])
+  disbursements  CompensationDisbursement[]
+  toSalary       CompensationToSalary[]
+
+  @@map("compensation_rounds")
+}
+
+// ─── Compensation Disbursements (การจ่ายค่าตอบแทนรายเดือน) ───
+model CompensationDisbursement {
+  id                 Int      @id @default(autoincrement())
+  roundId            Int      @map("round_id")
+  disbursedForMonth  String   @map("disbursed_for_month")
+  amount             Float
+  disbursedAt        String?  @map("disbursed_at")
+
+  round CompensationRound @relation(fields: [roundId], references: [id])
+
+  @@map("compensation_disbursements")
+}
+
+// ─── Compensation to Salary (ค่าตอบแทน → เลื่อนเงินเดือน) ───
+model CompensationToSalary {
+  id                    Int    @id @default(autoincrement())
+  employeeId            Int    @map("employee_id")
+  roundId               Int    @map("round_id")
+  promotionOrderId      Int    @map("promotion_order_id")
+  effectiveDate         String @map("effective_date")
+  totalReceivedToDate   Float? @map("total_received_to_date")
+  usedForSalary         Float? @map("used_for_salary")
+  remainingInRound      Float? @map("remaining_in_round")
+  oldSalary             Float? @map("old_salary")
+  newSalary             Float? @map("new_salary")
+  note                  String?
+  createdAt             DateTime @default(now()) @map("created_at")
+
+  person          Person            @relation(fields: [employeeId], references: [id])
+  round           CompensationRound @relation(fields: [roundId], references: [id])
+  promotionOrder  Order             @relation(fields: [promotionOrderId], references: [id])
+
+  @@map("compensation_to_salary")
+}
+
+// ─── Order Batches (ชุดคำสั่ง) ───
+model OrderBatch {
+  id               Int      @id @default(autoincrement())
+  batchNo          String   @unique @map("batch_no")
+  batchType        String   @map("batch_type")
+  description      String?
+  effectiveDate    String?  @map("effective_date")
+  issueDate        String?  @map("issue_date")
+  totalOrders      Int      @default(0) @map("total_orders")
+  previewedOrders  Int      @default(0) @map("previewed_orders")
+  cleanOrders      Int      @default(0) @map("clean_orders")
+  affectedOrders   Int      @default(0) @map("affected_orders")
+  blockerOrders    Int      @default(0) @map("blocker_orders")
+  cascadeTotal     Int      @default(0) @map("cascade_total")
+  status           String   @default("draft")
+  previewedAt      DateTime? @map("previewed_at")
+  approvedAt       DateTime? @map("approved_at")
+  approvedBy       String?  @map("approved_by")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  orders Order[]
+
+  @@map("order_batches")
+}
