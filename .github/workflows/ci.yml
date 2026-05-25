@@ -50,7 +50,7 @@ jobs:
           DATABASE_URL: "file:./dev.db"
 
       - name: Run tests
-        run: node --import tsx --test __tests__/freshness.test.ts __tests__/api/employees.test.ts __tests__/api/batches.test.ts __tests__/api/dashboard.test.ts
+        run: npx tsx __tests__/run.ts
         env:
           DATABASE_URL: "file:./dev.db"
 
