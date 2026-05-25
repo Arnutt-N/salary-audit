@@ -1,7 +1,7 @@
 import { test, describe, before } from "node:test"
 import assert from "node:assert"
 import { seedApiDb } from "../fixtures/seed-api"
-import { GET as getBatches, POST as createBatch } from "@/app/api/batches/route"
+import { GET as getBatches, POST as createBatch } from "../../../app/api/batches/route"
 
 let batch1Id: number
 

@@ -1,12 +1,12 @@
 import { test, describe, before, after } from "node:test"
 import assert from "node:assert"
-import { prisma } from "@/lib/prisma"
+import { prisma } from "../../lib/prisma"
 import {
   isOrderStale,
   validateOrderFreshness,
   getMaxSalaryEffectiveDate,
   cascadeStaleCheck,
-} from "@/lib/freshness"
+} from "../../lib/freshness"
 import { seedFreshnessDb } from "./fixtures/seed-freshness"
 
 let personId: number

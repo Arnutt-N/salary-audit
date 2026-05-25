@@ -1,8 +1,8 @@
 import { test, describe, before } from "node:test"
 import assert from "node:assert"
 import { seedApiDb } from "../fixtures/seed-api"
-import { GET as getEmployees } from "@/app/api/employees/route"
-import { GET as getEmployeeById } from "@/app/api/employees/[id]/route"
+import { GET as getEmployees } from "../../../app/api/employees/route"
+import { GET as getEmployeeById } from "../../../app/api/employees/[id]/route"
 
 let personIds: number[]
 
