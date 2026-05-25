@@ -1,8 +1,8 @@
 import { test, describe, before } from "node:test"
 import assert from "node:assert"
 import { seedApiDb } from "../fixtures/seed-api"
-import { GET as getSummary } from "../../../app/api/dashboard/summary/route"
-import { GET as getStale } from "../../../app/api/dashboard/stale/route"
+import { GET as getSummary } from "../../app/api/dashboard/summary/route"
+import { GET as getStale } from "../../app/api/dashboard/stale/route"
 
 before(async () => {
   await seedApiDb()
