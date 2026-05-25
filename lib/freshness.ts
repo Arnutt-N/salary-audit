@@ -45,11 +45,6 @@ function parseDate(s: string | null | undefined): Date | null {
   return isValid(d) ? d : null
 }
 
-function toDateStr(d: Date | null): string | null {
-  if (!d) return null
-  return d.toISOString().split("T")[0] // "YYYY-MM-DD"
-}
-
 function parseJson(s: string | null | undefined): Record<string, unknown> | null {
   if (!s) return null
   try {
