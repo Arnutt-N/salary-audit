@@ -89,6 +89,7 @@ model Order {
 
   @@index([employeeId, effectiveDate])
   @@index([orderStatus])
+  @@index([orderStatus, statusSalary])
   @@map("orders")
 }
 
@@ -151,6 +152,7 @@ model EmployeeChangeLog {
   person Person @relation(fields: [employeeId], references: [id])
   order  Order? @relation(fields: [orderId], references: [id])
 
+  @@index([employeeId, createdAt])
   @@map("employee_change_log")
 }
 

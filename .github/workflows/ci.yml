@@ -49,6 +49,11 @@ jobs:
         env:
           DATABASE_URL: "file:./dev.db"
 
+      - name: Run tests
+        run: npx tsx --test __tests__/freshness.test.ts __tests__/api/employees.test.ts __tests__/api/batches.test.ts __tests__/api/dashboard.test.ts
+        env:
+          DATABASE_URL: "file:./dev.db"
+
       - name: Type check
         run: npx tsc --noEmit 2>&1 || true
         env:
