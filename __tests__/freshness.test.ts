@@ -100,9 +100,9 @@ describe("isOrderStale", () => {
 describe("getMaxSalaryEffectiveDate", () => {
   test("returns latest date from salary sources", async () => {
     const date = await getMaxSalaryEffectiveDate(personId)
-    // Returns Date | null — at minimum the adjustment date 2569-07-01
+    // Returns Date | null — at minimum the adjustment date 2568-12-25
     assert.ok(date instanceof Date, `Expected Date, got ${typeof date} (${date})`)
-    const expected = new Date("2569-07-01")
+    const expected = new Date("2568-12-25")
     assert.ok(date.getTime() >= expected.getTime(), `Expected ${date.toISOString()} >= ${expected.toISOString()}`)
   })
 
