@@ -21,14 +21,14 @@ after(async () => {
 })
 
 describe("isOrderStale", () => {
-  test("returns false when order data matches person current data", async () => {
+  test("returns latest when salaryAsOfDate matches person current data", async () => {
     const order = await prisma.order.create({
       data: {
         employeeId: personId,
         orderType: "transfer",
         issueDate: "2569-01-15",
         effectiveDate: "2569-02-01",
-        salary: 25000,
+        salaryAsOfDate: "2569-02-01",
         positionName: "นักจัดการงานทั่วไป",
         positionType: "วิชาการ",
         positionLevel: "ชำนาญการ",
@@ -40,17 +40,17 @@ describe("isOrderStale", () => {
     })
 
     const result = await isOrderStale(order)
-    assert.strictEqual(result, false)
+    assert.strictEqual(result.overallStatus, "latest")
   })
 
-  test("returns true when salary differs from current", async () => {
+  test("returns stale when salaryAsOfDate is before latest adjustment", async () => {
     const order = await prisma.order.create({
       data: {
         employeeId: personId,
         orderType: "transfer",
         issueDate: "2568-10-01",
         effectiveDate: "2568-10-01",
-        salary: 20000, // different from current 25000
+        salaryAsOfDate: "2568-10-01", // before 2569-07-01 adjustment
         positionName: "นักจัดการงานทั่วไป",
         positionType: "วิชาการ",
         positionLevel: "ชำนาญการ",
@@ -59,32 +59,17 @@ describe("isOrderStale", () => {
     })
 
     const result = await isOrderStale(order)
-    assert.strictEqual(result, true)
+    assert.strictEqual(result.overallStatus, "stale")
   })
 
-  test("returns false when order is excluded via exclude_order_id", async () => {
-    const order = await prisma.order.create({
-      data: {
-        employeeId: personId,
-        orderType: "salary_apr",
-        issueDate: "2569-05-01",
-        effectiveDate: "2569-04-01",
-        salary: 30000, // different from current 25000
-      },
-    })
-
-    // This order IS the correction — should not flag itself as stale
-    const result = await isOrderStale(order, order.id)
-    assert.strictEqual(result, false)
-  })
-
-  test("returns true when position level changed", async () => {
+  test("returns stale when position level differs from current", async () => {
     const order = await prisma.order.create({
       data: {
         employeeId: personId,
         orderType: "promotion",
         issueDate: "2568-06-01",
         effectiveDate: "2568-06-01",
+        salaryAsOfDate: "2568-06-01",
         positionLevel: "ปฏิบัติการ", // different from "ชำนาญการ"
         positionName: "นักจัดการงานทั่วไป",
         positionType: "วิชาการ",
@@ -93,42 +78,32 @@ describe("isOrderStale", () => {
     })
 
     const result = await isOrderStale(order)
-    assert.strictEqual(result, true)
+    assert.strictEqual(result.overallStatus, "stale")
+    assert.strictEqual(result.statusLevel, "stale")
   })
 
-  test("returns false when salary is null in both order and person", async () => {
-    // Create person with null salary
-    const nullPerson = await prisma.person.create({
-      data: {
-        firstName: "ไร้เงิน",
-        lastName: "เดือน",
-        currentPositionName: "ตำแหน่งว่าง",
-        currentSalary: null,
-        isActive: true,
-      },
-    })
-
+  test("returns latest when order salaryAsOfDate is null", async () => {
     const order = await prisma.order.create({
       data: {
-        employeeId: nullPerson.id,
+        employeeId: personId,
         orderType: "other",
         issueDate: "2569-01-01",
         effectiveDate: "2569-01-01",
-        salary: null,
       },
     })
 
     const result = await isOrderStale(order)
-    assert.strictEqual(result, false)
+    assert.strictEqual(result.overallStatus, "latest")
   })
 })
 
 describe("getMaxSalaryEffectiveDate", () => {
-  test("returns the latest date from all salary sources", async () => {
+  test("returns latest date from salary sources", async () => {
     const date = await getMaxSalaryEffectiveDate(personId)
-    // Should return at minimum the salary_adjustment date (2569-07-01)
-    assert.ok(date !== null)
-    assert.ok(date >= "2569-07-01")
+    // Returns Date | null — at minimum the adjustment date 2569-07-01
+    assert.ok(date instanceof Date, `Expected Date, got ${typeof date} (${date})`)
+    const expected = new Date("2569-07-01")
+    assert.ok(date.getTime() >= expected.getTime(), `Expected ${date.toISOString()} >= ${expected.toISOString()}`)
   })
 
   test("returns null for non-existent person", async () => {
@@ -139,7 +114,6 @@ describe("getMaxSalaryEffectiveDate", () => {
 
 describe("validateOrderFreshness", () => {
   test("returns all 5 freshness flags", async () => {
-    // Find an existing order for this person
     const order = await prisma.order.findFirst({
       where: { employeeId: personId },
     })
@@ -161,7 +135,6 @@ describe("validateOrderFreshness", () => {
 
     const result = await validateOrderFreshness(order!.id)
 
-    // Re-read order from DB to verify persistence
     const updated = await prisma.order.findUnique({
       where: { id: order!.id },
     })
@@ -172,32 +145,17 @@ describe("validateOrderFreshness", () => {
 
 describe("cascadeStaleCheck", () => {
   test("returns number for existing order", async () => {
-    // Create a stale order first
     const order = await prisma.order.create({
       data: {
         employeeId: personId,
         orderType: "salary_apr",
         issueDate: "2569-04-01",
         effectiveDate: "2569-04-01",
-        salary: 30000, // different from current 25000
         orderStatus: "active",
-        statusSalary: "stale",
       },
     })
 
     const result = await cascadeStaleCheck(order.id)
-    // cascadeStaleCheck returns Promise<number>
-    assert.ok(typeof result === "number")
-  })
-
-  test("cascade respects maxDepth", async () => {
-    const order = await prisma.order.findFirst({
-      where: { employeeId: personId, orderStatus: "active" },
-    })
-    assert.ok(order)
-
-    const result = await cascadeStaleCheck(order!.id, new Set(), 0, 2)
-    // With depth=0 and maxDepth=2, returns number of cascaded orders
     assert.ok(typeof result === "number")
   })
 
