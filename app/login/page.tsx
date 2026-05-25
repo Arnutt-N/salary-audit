@@ -2,10 +2,12 @@
 
 import { signIn } from "next-auth/react"
 import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 
 export default function LoginPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const callbackUrl = searchParams.get("callbackUrl") || "/dashboard"
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
 
@@ -24,7 +26,7 @@ export default function LoginPage() {
     if (result?.error) {
       setError("ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง")
     } else {
-      router.push("/")
+      router.push(callbackUrl)
       router.refresh()
     }
 

@@ -1,6 +1,8 @@
 import type { Metadata } from "next"
 import Link from "next/link"
 import { Toaster } from "sonner"
+import { SessionProvider } from "next-auth/react"
+import { UserNav } from "@/components/shared/user-nav"
 import "./globals.css"
 
 export const metadata: Metadata = {
@@ -20,19 +22,21 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body className="min-h-screen bg-gray-50 font-sans antialiased">
-        <nav className="border-b bg-white sticky top-0 z-10">
-          <div className="max-w-5xl mx-auto flex items-center gap-6 px-6 h-12 text-sm">
-            <Link href="/dashboard" className="font-bold text-zinc-900">Salary Audit</Link>
-            <Link href="/dashboard" className="text-zinc-600 hover:text-zinc-900">📊 แผงควบคุม</Link>
-            <Link href="/employees" className="text-zinc-600 hover:text-zinc-900">👥 ข้าราชการ</Link>
-            <Link href="/orders" className="text-zinc-600 hover:text-zinc-900">📋 คำสั่ง</Link>
-            <Link href="/batches" className="text-zinc-600 hover:text-zinc-900">📦 ชุดคำสั่ง</Link>
-            <Link href="/reports/audit" className="text-zinc-600 hover:text-zinc-900">📜 Audit</Link>
-            <div className="flex-1" />
-            <Link href="/login" className="text-zinc-400 hover:text-zinc-600 text-xs">เข้าสู่ระบบ</Link>
-          </div>
-        </nav>
-        {children}
+        <SessionProvider>
+          <nav className="border-b bg-white sticky top-0 z-10">
+            <div className="max-w-5xl mx-auto flex items-center gap-6 px-6 h-12 text-sm">
+              <Link href="/dashboard" className="font-bold text-zinc-900">Salary Audit</Link>
+              <Link href="/dashboard" className="text-zinc-600 hover:text-zinc-900">📊 แผงควบคุม</Link>
+              <Link href="/employees" className="text-zinc-600 hover:text-zinc-900">👥 ข้าราชการ</Link>
+              <Link href="/orders" className="text-zinc-600 hover:text-zinc-900">📋 คำสั่ง</Link>
+              <Link href="/batches" className="text-zinc-600 hover:text-zinc-900">📦 ชุดคำสั่ง</Link>
+              <Link href="/reports/audit" className="text-zinc-600 hover:text-zinc-900">📜 Audit</Link>
+              <div className="flex-1" />
+              <UserNav />
+            </div>
+          </nav>
+          {children}
+        </SessionProvider>
         <Toaster position="top-right" richColors duration={4000} />
       </body>
     </html>

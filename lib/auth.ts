@@ -11,7 +11,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       },
       async authorize(credentials) {
         // TODO: Replace with real authentication
-        if (credentials?.username === "admin" && credentials?.password === "admin") {
+        if (credentials?.username === "admin" && credentials?.password === "password") {
           return { id: "1", name: "ผู้ดูแลระบบ", role: "admin" }
         }
         return null
