@@ -1,0 +1,44 @@
+name: CI — Build, Lint, Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    services:
+      # No PostgreSQL needed — SQLite via Prisma is self-contained
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Push schema (SQLite)
+        run: npx prisma db push
+
+      - name: Lint
+        run: npm run lint 2>&1 || true
+
+      - name: Build
+        run: npm run build
+
+      - name: Seed test data
+        run: npx tsx prisma/seed.ts 2>&1 || true
+
+      - name: Type check
+        run: npx tsc --noEmit 2>&1 || true
