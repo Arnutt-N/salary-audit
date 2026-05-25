@@ -122,7 +122,7 @@ async function getLatestChangeLog(
     where: {
       employeeId,
       changeType,
-      ...(excludeOrderId ? { orderId: { not: excludeOrderId } } : {}),
+      ...(excludeOrderId ? { OR: [{ orderId: null }, { orderId: { not: excludeOrderId } }] } : {}),
     },
     orderBy: { effectiveDate: "desc" },
     select: { newValue: true },
