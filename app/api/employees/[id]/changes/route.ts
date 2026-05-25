@@ -5,9 +5,10 @@ const PAGE_SIZE = 50
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const id = parseInt(params.id)
+  const { id: idStr } = await params
+  const id = parseInt(idStr)
   const { searchParams } = new URL(request.url)
   const page = parseInt(searchParams.get("page") || "1")
 
