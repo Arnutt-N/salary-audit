@@ -1,4 +1,4 @@
-import { test, describe, beforeEach, after } from "node:test"
+import { test, describe, before, after } from "node:test"
 import assert from "node:assert"
 import { prisma } from "../lib/prisma"
 import {
@@ -11,7 +11,7 @@ import { seedFreshnessDb } from "./fixtures/seed-freshness"
 
 let personId: number
 
-beforeEach(async () => {
+before(async () => {
   const data = await seedFreshnessDb()
   personId = data.personId
 })
