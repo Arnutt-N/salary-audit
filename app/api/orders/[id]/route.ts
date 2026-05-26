@@ -14,7 +14,7 @@ export async function GET(
         select: { firstName: true, lastName: true, currentSalary: true, currentPositionName: true },
       },
       batch: { select: { batchNo: true, batchType: true } },
-      corrected: { select: { id: true, orderNo: true, orderType: true } },
+      // NOTE: correctedFrom is a plain Int?, not a relation — fetched separately below
     },
   })
 
@@ -22,10 +22,18 @@ export async function GET(
     return NextResponse.json({ error: "Order not found" }, { status: 404 })
   }
 
+  // Fetch correctedFrom order separately (plain Int field, not relation)
+  const correctedFromOrder = order.correctedFrom
+    ? await prisma.order.findUnique({
+        where: { id: order.correctedFrom },
+        select: { id: true, orderNo: true, orderType: true },
+      })
+    : null
+
   // Run freshness check on-load
   const freshness = await validateOrderFreshness(order.id)
 
-  return NextResponse.json({ ...order, freshness })
+  return NextResponse.json({ ...order, correctedFromOrder, freshness })
 }
 
 // PATCH /api/orders/[id]/status — lifecycle state transitions
@@ -99,6 +107,64 @@ export async function PATCH(
   } catch (error) {
     return NextResponse.json(
       { error: "Status transition failed", detail: String(error) },
+      { status: 500 }
+    )
+  }
+}
+
+// PUT /api/orders/[id] — edit order data
+export async function PUT(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params
+    const orderId = parseInt(id)
+    const body = await request.json()
+
+    const order = await prisma.order.findUnique({ where: { id: orderId } })
+    if (!order) {
+      return NextResponse.json({ error: "Order not found" }, { status: 404 })
+    }
+
+    // Only draft or active orders can be edited
+    if (!["draft", "active"].includes(order.orderStatus)) {
+      return NextResponse.json(
+        { error: `Cannot edit order with status '${order.orderStatus}'` },
+        { status: 400 }
+      )
+    }
+
+    // Update order fields only (not status, correction chain)
+    const updated = await prisma.order.update({
+      where: { id: orderId },
+      data: {
+        orderNo: body.orderNo ?? order.orderNo,
+        orderType: body.orderType ?? order.orderType,
+        issueDate: body.issueDate ?? order.issueDate,
+        effectiveDate: body.effectiveDate ?? order.effectiveDate,
+        salary: body.salary ?? order.salary,
+        salaryAsOfDate: body.salaryAsOfDate ?? order.salaryAsOfDate,
+        positionName: body.positionName ?? order.positionName,
+        positionType: body.positionType ?? order.positionType,
+        positionLevel: body.positionLevel ?? order.positionLevel,
+        bureau: body.bureau ?? order.bureau,
+        division: body.division ?? order.division,
+        department: body.department ?? order.department,
+        ministry: body.ministry ?? order.ministry,
+      },
+    })
+
+    // Re-run freshness check if active
+    if (order.orderStatus === "active") {
+      await validateOrderFreshness(orderId)
+      await cascadeStaleCheck(orderId)
+    }
+
+    return NextResponse.json(updated)
+  } catch (error) {
+    return NextResponse.json(
+      { error: "Failed to update order", detail: String(error) },
       { status: 500 }
     )
   }
