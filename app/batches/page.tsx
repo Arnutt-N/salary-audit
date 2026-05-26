@@ -7,7 +7,7 @@ export default async function BatchesPage() {
     orderBy: { createdAt: "desc" },
   })
 
-  const tableData: BatchRow[] = batches.map((b) => ({
+  const tableData: BatchRow[] = (batches as any[]).map((b) => ({
     id: b.id,
     batchNo: b.batchNo,
     batchType: b.batchType,
