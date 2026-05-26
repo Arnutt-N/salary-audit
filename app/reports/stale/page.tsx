@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import Link from "next/link"
-import { toThaiDate } from "@/lib/date-utils"
+import { StaleTable, type StaleRow } from "./StaleTable"
 
 const typeLabel: Record<string, string> = {
   salary_increase: "💰 เลื่อนเงินเดือน",
@@ -51,6 +51,21 @@ export default async function StaleReportPage({
 
   const totalPages = Math.ceil(total / PAGE_SIZE)
 
+  const tableData: StaleRow[] = orders.map((o: any) => ({
+    id: o.id,
+    orderType: o.orderType,
+    personId: o.person?.id ?? null,
+    personFirstName: o.person?.firstName ?? null,
+    personLastName: o.person?.lastName ?? null,
+    effectiveDate: o.effectiveDate,
+    orderStatus: o.orderStatus,
+    statusSalary: o.statusSalary,
+    statusPosition: o.statusPosition,
+    statusType: o.statusType,
+    statusLevel: o.statusLevel,
+    statusOrg: o.statusOrg,
+  }))
+
   return (
     <div className="max-w-5xl mx-auto p-6">
       <h1 className="text-2xl font-bold mb-4">🚨 คำสั่งที่ต้องแก้ไข</h1>
@@ -90,60 +105,13 @@ export default async function StaleReportPage({
         พบ {total} คำสั่ง | หน้า {currentPage} / {totalPages || 1}
       </p>
 
-      {orders.length === 0 ? (
+      {tableData.length === 0 ? (
         <div className="text-center py-12 text-zinc-400">
           <p className="text-lg">🎉 ไม่มีคำสั่ง stale</p>
           <p className="text-sm mt-1">ข้อมูลทั้งหมดเป็นปัจจุบัน</p>
         </div>
       ) : (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <table className="w-full">
-            <thead className="bg-zinc-50 border-b">
-              <tr>
-                <th className="text-left p-3 text-sm font-medium">#</th>
-                <th className="text-left p-3 text-sm font-medium">ข้าราชการ</th>
-                <th className="text-left p-3 text-sm font-medium">ประเภท</th>
-                <th className="text-left p-3 text-sm font-medium">วันที่มีผล</th>
-                <th className="text-left p-3 text-sm font-medium">ปัญหา</th>
-                <th className="text-left p-3 text-sm font-medium">สถานะ</th>
-              </tr>
-            </thead>
-            <tbody>
-              {orders.map((o) => {
-                const warnings: string[] = []
-                if (o.statusSalary === "stale") warnings.push("💰 เงินเดือน")
-                if (o.statusLevel === "stale") warnings.push("📊 ระดับ")
-                if (o.statusPosition === "stale") warnings.push("📋 ตำแหน่ง")
-                if (o.statusType === "stale") warnings.push("🏷️ ประเภท")
-                if (o.statusOrg === "stale") warnings.push("🏢 สังกัด")
-                return (
-                  <tr key={o.id} className="border-b hover:bg-zinc-50">
-                    <td className="p-3 text-sm font-mono text-zinc-400">{o.id}</td>
-                    <td className="p-3 text-sm">
-                      <Link href={`/employees/${o.person?.id}`} className="text-blue-600 hover:underline">
-                        {o.person?.firstName} {o.person?.lastName}
-                      </Link>
-                    </td>
-                    <td className="p-3 text-sm">{typeLabel[o.orderType] || o.orderType}</td>
-                    <td className="p-3 text-sm font-mono">{toThaiDate(o.effectiveDate)}</td>
-                    <td className="p-3 text-sm">
-                      {warnings.map((w, i) => (
-                        <span key={i} className="inline-block text-xs bg-red-50 text-red-700 px-2 py-0.5 rounded mr-1 mb-0.5">
-                          {w}
-                        </span>
-                      ))}
-                    </td>
-                    <td className="p-3">
-                      <span className={`text-xs px-2 py-1 rounded-full ${o.orderStatus === "superseded" ? "bg-zinc-100 text-zinc-600" : "bg-red-50 text-red-700"}`}>
-                        {o.orderStatus === "superseded" ? "🔄 ถูกแทนที่" : "🔴 ต้องแก้ไข"}
-                      </span>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
+        <StaleTable data={tableData} />
       )}
 
       {/* Pagination */}

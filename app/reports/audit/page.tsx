@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import Link from "next/link"
+import { AuditTable, type AuditRow } from "./AuditTable"
 
 const PAGE_SIZE = 50
 
@@ -73,6 +74,20 @@ export default async function AuditReportPage({
   ])
 
   const totalPages = Math.ceil(total / PAGE_SIZE)
+
+  const tableData: AuditRow[] = changes.map((c) => ({
+    id: c.id,
+    createdAt: c.createdAt.toISOString(),
+    changeType: c.changeType,
+    oldValue: c.oldValue,
+    newValue: c.newValue,
+    personId: c.person.id,
+    personFirstName: c.person.firstName,
+    personLastName: c.person.lastName,
+    orderId: c.order?.id ?? null,
+    orderNo: c.order?.orderNo ?? null,
+    orderType: c.order?.orderType ?? null,
+  }))
 
   const queryString = (extra: Record<string, string>) => {
     const p = new URLSearchParams()
@@ -150,66 +165,13 @@ export default async function AuditReportPage({
         ทั้งหมด {total} รายการ | หน้า {currentPage} / {totalPages || 1}
       </p>
 
-      {changes.length === 0 ? (
+      {tableData.length === 0 ? (
         <div className="text-center py-12 text-zinc-400">
           <p className="text-lg">ไม่พบรายการที่ตรงกับเงื่อนไข</p>
           <p className="text-sm mt-1">ลองเปลี่ยน filter หรือเพิ่มข้อมูลในระบบ</p>
         </div>
       ) : (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <table className="w-full">
-            <thead className="bg-zinc-50 border-b">
-              <tr>
-                <th className="text-left p-3 text-sm font-medium">วันที่</th>
-                <th className="text-left p-3 text-sm font-medium">ข้าราชการ</th>
-                <th className="text-left p-3 text-sm font-medium">ฟิลด์</th>
-                <th className="text-left p-3 text-sm font-medium">ค่าเก่า</th>
-                <th className="text-left p-3 text-sm font-medium">ค่าใหม่</th>
-                <th className="text-left p-3 text-sm font-medium">คำสั่ง</th>
-              </tr>
-            </thead>
-            <tbody>
-              {changes.map((c) => (
-                <tr key={c.id} className="border-b hover:bg-zinc-50 text-sm">
-                  <td className="p-3 text-zinc-500 whitespace-nowrap">
-                    {new Date(c.createdAt).toLocaleDateString("th-TH")}
-                  </td>
-                  <td className="p-3">
-                    <Link
-                      href={`/employees/${c.person.id}`}
-                      className="text-blue-600 hover:underline"
-                    >
-                      {c.person.firstName} {c.person.lastName}
-                    </Link>
-                  </td>
-                  <td className="p-3">
-                    <span className="px-2 py-0.5 bg-zinc-100 rounded text-xs">
-                      {fieldLabel[c.changeType] || c.changeType}
-                    </span>
-                  </td>
-                  <td className="p-3 text-zinc-500 font-mono text-xs">
-                    {c.oldValue || "—"}
-                  </td>
-                  <td className="p-3 font-medium font-mono text-xs">
-                    {c.newValue || "—"}
-                  </td>
-                  <td className="p-3">
-                    {c.order ? (
-                      <Link
-                        href={`/orders/${c.order.id}`}
-                        className="text-blue-600 hover:underline text-xs"
-                      >
-                        #{c.order.id}
-                      </Link>
-                    ) : (
-                      "—"
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <AuditTable data={tableData} />
       )}
 
       {/* Pagination */}

@@ -3,6 +3,9 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { orderSchema, type OrderFormData } from "@/lib/validation/order-schema"
 
 const typeOptions = [
   { value: "salary_increase", label: "💰 เลื่อนเงินเดือน" },
@@ -51,24 +54,35 @@ export function NewOrderForm() {
   const [preview, setPreview] = useState<PreviewResult | null>(null)
   const [loading, setLoading] = useState(false)
 
-  // Form state
-  const [form, setForm] = useState({
-    orderType: "salary_increase",
-    orderNo: "",
-    issueDate: "",
-    effectiveDate: "",
-    salary: "",
-    salaryAsOfDate: "",
-    positionName: "",
-    positionType: "",
-    positionLevel: "",
-    bureau: "",
-    division: "",
-    department: "",
-    ministry: "",
+  // React Hook Form
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    setValue,
+    watch,
+  } = useForm<OrderFormData>({
+    resolver: zodResolver(orderSchema),
+    defaultValues: {
+      employeeId: undefined,
+      orderType: "salary_increase",
+      orderNo: "",
+      issueDate: "",
+      effectiveDate: "",
+      salary: null,
+      salaryAsOfDate: "",
+      positionName: "",
+      positionType: "",
+      positionLevel: "",
+      bureau: "",
+      division: "",
+      department: "",
+      ministry: "",
+    },
   })
 
-  const set = (field: string, value: string) => setForm((f) => ({ ...f, [field]: value }))
+  // Read current form values for preview/API calls
+  const formValues = watch()
 
   // Employee search
   const handleSearch = async () => {
@@ -86,21 +100,23 @@ export function NewOrderForm() {
     setSelectedPerson(p)
     setSearchResults([])
     setEmployeeSearch(`${p.firstName} ${p.lastName}`)
+    // Set employeeId
+    setValue("employeeId", p.id, { shouldValidate: true })
     // Auto-fill current state
-    set("positionName", p.currentPositionName || "")
-    set("positionType", p.currentPositionType || "")
-    set("positionLevel", p.currentPositionLevel || "")
-    set("bureau", p.currentBureau || "")
-    set("division", p.currentDivision || "")
-    set("department", p.currentDepartment || "")
-    set("ministry", p.currentMinistry || "")
-    if (p.currentSalary) set("salary", String(p.currentSalary))
+    setValue("positionName", p.currentPositionName || "")
+    setValue("positionType", p.currentPositionType || "")
+    setValue("positionLevel", p.currentPositionLevel || "")
+    setValue("bureau", p.currentBureau || "")
+    setValue("division", p.currentDivision || "")
+    setValue("department", p.currentDepartment || "")
+    setValue("ministry", p.currentMinistry || "")
+    if (p.currentSalary) setValue("salary", p.currentSalary)
   }
 
   // Preview
   const handlePreview = async () => {
     if (!selectedPerson) { toast.error("กรุณาเลือกข้าราชการ"); return }
-    if (!form.effectiveDate) { toast.error("กรุณากรอกวันที่มีผล"); return }
+    if (!formValues.effectiveDate) { toast.error("กรุณากรอกวันที่มีผล"); return }
     setLoading(true)
     try {
       const res = await fetch("/api/preview", {
@@ -108,11 +124,11 @@ export function NewOrderForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           employeeId: selectedPerson.id,
-          orderType: form.orderType,
-          effectiveDate: form.effectiveDate,
-          salary: form.salary ? parseFloat(form.salary) : undefined,
-          salaryAsOfDate: form.salaryAsOfDate || undefined,
-          positionLevel: form.positionLevel || undefined,
+          orderType: formValues.orderType,
+          effectiveDate: formValues.effectiveDate,
+          salary: formValues.salary ? Number(formValues.salary) : undefined,
+          salaryAsOfDate: formValues.salaryAsOfDate || undefined,
+          positionLevel: formValues.positionLevel || undefined,
         }),
       })
       const data = await res.json()
@@ -124,14 +140,9 @@ export function NewOrderForm() {
     }
   }
 
-  // Submit
-  const handleSubmit = async (orderStatus: "draft" | "active") => {
+  // Submit helpers — react-hook-form handleSubmit validates before calling
+  const submitOrder = async (data: OrderFormData, orderStatus: "draft" | "active") => {
     if (!selectedPerson) { toast.error("กรุณาเลือกข้าราชการ"); return }
-    if (!form.effectiveDate) { toast.error("กรุณากรอกวันที่มีผล"); return }
-    if (form.salaryAsOfDate && form.effectiveDate && form.salaryAsOfDate > form.effectiveDate) {
-      toast.error("เงินเดือน ณ วันที่ ต้องไม่เกินวันที่มีผล")
-      return
-    }
     setLoading(true)
     try {
       const res = await fetch("/api/orders", {
@@ -139,19 +150,19 @@ export function NewOrderForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           employeeId: selectedPerson.id,
-          orderType: form.orderType,
-          orderNo: form.orderNo || null,
-          issueDate: form.issueDate,
-          effectiveDate: form.effectiveDate,
-          salary: form.salary ? parseFloat(form.salary) : null,
-          salaryAsOfDate: form.salaryAsOfDate || null,
-          positionName: form.positionName || null,
-          positionType: form.positionType || null,
-          positionLevel: form.positionLevel || null,
-          bureau: form.bureau || null,
-          division: form.division || null,
-          department: form.department || null,
-          ministry: form.ministry || null,
+          orderType: data.orderType,
+          orderNo: data.orderNo || null,
+          issueDate: data.issueDate,
+          effectiveDate: data.effectiveDate,
+          salary: data.salary ?? null,
+          salaryAsOfDate: data.salaryAsOfDate || null,
+          positionName: data.positionName || null,
+          positionType: data.positionType || null,
+          positionLevel: data.positionLevel || null,
+          bureau: data.bureau || null,
+          division: data.division || null,
+          department: data.department || null,
+          ministry: data.ministry || null,
           orderStatus,
         }),
       })
@@ -168,6 +179,9 @@ export function NewOrderForm() {
       setLoading(false)
     }
   }
+
+  const onDraft = handleSubmit((data) => submitOrder(data, "draft"))
+  const onActive = handleSubmit((data) => submitOrder(data, "active"))
 
   return (
     <div className="space-y-6">
@@ -202,6 +216,7 @@ export function NewOrderForm() {
         {selectedPerson && (
           <p className="mt-2 text-sm text-green-600">✅ เลือก: {selectedPerson.firstName} {selectedPerson.lastName}</p>
         )}
+        {errors.employeeId && <p className="text-xs text-red-500 mt-1">{errors.employeeId.message}</p>}
       </div>
 
       {/* Order Fields */}
@@ -210,57 +225,70 @@ export function NewOrderForm() {
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="text-xs text-zinc-500">ประเภทคำสั่ง</label>
-            <select value={form.orderType} onChange={(e) => set("orderType", e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm mt-1">
+            <select {...register("orderType")} className="w-full px-3 py-2 border rounded-lg text-sm mt-1">
               {typeOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
+            {errors.orderType && <p className="text-xs text-red-500 mt-1">{errors.orderType.message}</p>}
           </div>
           <div>
             <label className="text-xs text-zinc-500">เลขที่คำสั่ง</label>
-            <input value={form.orderNo} onChange={(e) => set("orderNo", e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm mt-1" />
+            <input {...register("orderNo")} className="w-full px-3 py-2 border rounded-lg text-sm mt-1" />
+            {errors.orderNo && <p className="text-xs text-red-500 mt-1">{errors.orderNo.message}</p>}
           </div>
           <div>
             <label className="text-xs text-zinc-500">วันที่ลงคำสั่ง</label>
-            <input type="date" value={form.issueDate} onChange={(e) => set("issueDate", e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm mt-1" />
+            <input type="date" {...register("issueDate")} className="w-full px-3 py-2 border rounded-lg text-sm mt-1" />
+            {errors.issueDate && <p className="text-xs text-red-500 mt-1">{errors.issueDate.message}</p>}
           </div>
           <div>
             <label className="text-xs text-zinc-500">วันที่มีผล *</label>
-            <input type="date" value={form.effectiveDate} onChange={(e) => set("effectiveDate", e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm mt-1" />
+            <input type="date" {...register("effectiveDate")} className="w-full px-3 py-2 border rounded-lg text-sm mt-1" />
+            {errors.effectiveDate && <p className="text-xs text-red-500 mt-1">{errors.effectiveDate.message}</p>}
           </div>
           <div>
             <label className="text-xs text-zinc-500">เงินเดือน</label>
-            <input type="number" value={form.salary} onChange={(e) => set("salary", e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm mt-1" />
+            <input type="number" {...register("salary", { valueAsNumber: true })} className="w-full px-3 py-2 border rounded-lg text-sm mt-1" />
+            {errors.salary && <p className="text-xs text-red-500 mt-1">{errors.salary.message}</p>}
           </div>
           <div>
             <label className="text-xs text-zinc-500">เงินเดือน ณ วันที่</label>
-            <input type="date" value={form.salaryAsOfDate} onChange={(e) => set("salaryAsOfDate", e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm mt-1" />
+            <input type="date" {...register("salaryAsOfDate")} className="w-full px-3 py-2 border rounded-lg text-sm mt-1" />
+            {errors.salaryAsOfDate && <p className="text-xs text-red-500 mt-1">{errors.salaryAsOfDate.message}</p>}
           </div>
           <div>
             <label className="text-xs text-zinc-500">ตำแหน่ง</label>
-            <input value={form.positionName} onChange={(e) => set("positionName", e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm mt-1" />
+            <input {...register("positionName")} className="w-full px-3 py-2 border rounded-lg text-sm mt-1" />
+            {errors.positionName && <p className="text-xs text-red-500 mt-1">{errors.positionName.message}</p>}
           </div>
           <div>
             <label className="text-xs text-zinc-500">ประเภทตำแหน่ง</label>
-            <input value={form.positionType} onChange={(e) => set("positionType", e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm mt-1" />
+            <input {...register("positionType")} className="w-full px-3 py-2 border rounded-lg text-sm mt-1" />
+            {errors.positionType && <p className="text-xs text-red-500 mt-1">{errors.positionType.message}</p>}
           </div>
           <div>
             <label className="text-xs text-zinc-500">ระดับ</label>
-            <input value={form.positionLevel} onChange={(e) => set("positionLevel", e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm mt-1" />
+            <input {...register("positionLevel")} className="w-full px-3 py-2 border rounded-lg text-sm mt-1" />
+            {errors.positionLevel && <p className="text-xs text-red-500 mt-1">{errors.positionLevel.message}</p>}
           </div>
           <div>
             <label className="text-xs text-zinc-500">สังกัด</label>
-            <input value={form.bureau} onChange={(e) => set("bureau", e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm mt-1" />
+            <input {...register("bureau")} className="w-full px-3 py-2 border rounded-lg text-sm mt-1" />
+            {errors.bureau && <p className="text-xs text-red-500 mt-1">{errors.bureau.message}</p>}
           </div>
           <div>
             <label className="text-xs text-zinc-500">กอง</label>
-            <input value={form.division} onChange={(e) => set("division", e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm mt-1" />
+            <input {...register("division")} className="w-full px-3 py-2 border rounded-lg text-sm mt-1" />
+            {errors.division && <p className="text-xs text-red-500 mt-1">{errors.division.message}</p>}
           </div>
           <div>
             <label className="text-xs text-zinc-500">กรม</label>
-            <input value={form.department} onChange={(e) => set("department", e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm mt-1" />
+            <input {...register("department")} className="w-full px-3 py-2 border rounded-lg text-sm mt-1" />
+            {errors.department && <p className="text-xs text-red-500 mt-1">{errors.department.message}</p>}
           </div>
           <div className="col-span-2">
             <label className="text-xs text-zinc-500">กระทรวง</label>
-            <input value={form.ministry} onChange={(e) => set("ministry", e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm mt-1" />
+            <input {...register("ministry")} className="w-full px-3 py-2 border rounded-lg text-sm mt-1" />
+            {errors.ministry && <p className="text-xs text-red-500 mt-1">{errors.ministry.message}</p>}
           </div>
         </div>
       </div>
@@ -286,10 +314,10 @@ export function NewOrderForm() {
         <button onClick={handlePreview} disabled={loading} className="px-4 py-2 border rounded-lg text-sm hover:bg-zinc-50 disabled:opacity-50">
           🔍 Preview Impact
         </button>
-        <button onClick={() => handleSubmit("draft")} disabled={loading} className="px-4 py-2 border rounded-lg text-sm hover:bg-zinc-50 disabled:opacity-50">
+        <button onClick={onDraft} disabled={loading} className="px-4 py-2 border rounded-lg text-sm hover:bg-zinc-50 disabled:opacity-50">
           💾 บันทึกแบบร่าง
         </button>
-        <button onClick={() => handleSubmit("active")} disabled={loading} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50">
+        <button onClick={onActive} disabled={loading} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50">
           ✅ บันทึกและเปิดใช้
         </button>
       </div>
