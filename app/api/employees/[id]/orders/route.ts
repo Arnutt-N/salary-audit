@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import type { OrderWithPerson } from "@/lib/types"
+import type { EmployeeOrderResult } from "@/lib/types"
 
 export async function GET(
   _request: NextRequest,
@@ -29,7 +29,7 @@ export async function GET(
       positionType: true,
       positionLevel: true,
     },
-  })) as OrderWithPerson[]
+  })) as EmployeeOrderResult[]
 
   const enriched = orders.map((o) => {
     const isStale =

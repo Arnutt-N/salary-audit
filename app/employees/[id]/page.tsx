@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import Link from "next/link"
 import { notFound } from "next/navigation"
-import type { OrderWithPerson, ChangeLogWithOrder } from "@/lib/types"
+import type { EmployeeOrderResult, ChangeLogWithOrder } from "@/lib/types"
 
 const typeLabel: Record<string, string> = {
   salary_apr: "เลื่อนเงินเดือน 1 เม.ย.",
@@ -78,7 +78,7 @@ export default async function EmployeeDetailPage({
       salary: true,
       positionName: true,
     },
-  })) as OrderWithPerson[]
+  })) as EmployeeOrderResult[]
 
   // Change log (last 20)
   const changes = (await prisma.employeeChangeLog.findMany({

@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import Link from "next/link"
 import { AuditTable, type AuditRow } from "./AuditTable"
+import type { AuditChangeResult } from "@/lib/types"
 
 const PAGE_SIZE = 50
 
@@ -75,7 +76,7 @@ export default async function AuditReportPage({
 
   const totalPages = Math.ceil(total / PAGE_SIZE)
 
-  const tableData: AuditRow[] = (changes as AuditRow[]).map((c) => ({
+  const tableData: AuditRow[] = (changes as AuditChangeResult[]).map((c) => ({
     id: c.id,
     createdAt: c.createdAt.toISOString(),
     changeType: c.changeType,

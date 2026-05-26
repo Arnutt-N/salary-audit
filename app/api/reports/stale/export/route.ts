@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import type { OrderWithPerson } from "@/lib/types"
+import type { StaleOrderWithPerson } from "@/lib/types"
 
 const MAX_EXPORT = 5000
 
@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
         select: { firstName: true, lastName: true },
       },
     },
-  })) as OrderWithPerson[]
+  })) as StaleOrderWithPerson[]
 
   const BOM = "\uFEFF"
   const header =
