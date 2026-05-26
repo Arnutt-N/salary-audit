@@ -11,8 +11,8 @@ export type AuditRow = {
   oldValue: string | null
   newValue: string | null
   personId: number
-  personFirstName: string
-  personLastName: string
+  personFirstName: string | null
+  personLastName: string | null
   orderId: number | null
   orderNo: string | null
   orderType: string | null
