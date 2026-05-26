@@ -7,8 +7,8 @@ import Link from "next/link"
 export type EmployeeRow = {
   id: number
   nameTitle: string | null
-  firstName: string
-  lastName: string
+  firstName: string | null
+  lastName: string | null
   currentPositionName: string | null
   currentPositionType: string | null
   currentPositionLevel: string | null
