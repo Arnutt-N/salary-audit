@@ -3,6 +3,9 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { orderSchema, type OrderFormData } from "@/lib/validation/order-schema"
 
 const typeOptions = [
   { value: "salary_increase", label: "💰 เลื่อนเงินเดือน" },
@@ -41,49 +44,52 @@ interface OrderData {
 export function EditOrderForm({ order, canEdit }: { order: OrderData; canEdit: boolean }) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
-  const [form, setForm] = useState({
-    orderType: order.orderType,
-    orderNo: order.orderNo || "",
-    issueDate: order.issueDate,
-    effectiveDate: order.effectiveDate,
-    salary: order.salary != null ? String(order.salary) : "",
-    salaryAsOfDate: order.salaryAsOfDate || "",
-    positionName: order.positionName || "",
-    positionType: order.positionType || "",
-    positionLevel: order.positionLevel || "",
-    bureau: order.bureau || "",
-    division: order.division || "",
-    department: order.department || "",
-    ministry: order.ministry || "",
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<OrderFormData>({
+    resolver: zodResolver(orderSchema),
+    defaultValues: {
+      employeeId: 0, // not used for edit
+      orderType: order.orderType,
+      orderNo: order.orderNo || "",
+      issueDate: order.issueDate,
+      effectiveDate: order.effectiveDate,
+      salary: order.salary,
+      salaryAsOfDate: order.salaryAsOfDate || "",
+      positionName: order.positionName || "",
+      positionType: order.positionType || "",
+      positionLevel: order.positionLevel || "",
+      bureau: order.bureau || "",
+      division: order.division || "",
+      department: order.department || "",
+      ministry: order.ministry || "",
+    },
   })
 
-  const set = (field: string, value: string) => setForm((f) => ({ ...f, [field]: value }))
-
-  const handleSubmit = async () => {
+  const onSubmit = async (data: OrderFormData) => {
     if (!canEdit) return
-    if (form.salaryAsOfDate && form.effectiveDate && form.salaryAsOfDate > form.effectiveDate) {
-      toast.error("เงินเดือน ณ วันที่ ต้องไม่เกินวันที่มีผล")
-      return
-    }
     setLoading(true)
     try {
       const res = await fetch(`/api/orders/${order.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          orderType: form.orderType,
-          orderNo: form.orderNo || null,
-          issueDate: form.issueDate,
-          effectiveDate: form.effectiveDate,
-          salary: form.salary ? parseFloat(form.salary) : null,
-          salaryAsOfDate: form.salaryAsOfDate || null,
-          positionName: form.positionName || null,
-          positionType: form.positionType || null,
-          positionLevel: form.positionLevel || null,
-          bureau: form.bureau || null,
-          division: form.division || null,
-          department: form.department || null,
-          ministry: form.ministry || null,
+          orderType: data.orderType,
+          orderNo: data.orderNo || null,
+          issueDate: data.issueDate,
+          effectiveDate: data.effectiveDate,
+          salary: data.salary ?? null,
+          salaryAsOfDate: data.salaryAsOfDate || null,
+          positionName: data.positionName || null,
+          positionType: data.positionType || null,
+          positionLevel: data.positionLevel || null,
+          bureau: data.bureau || null,
+          division: data.division || null,
+          department: data.department || null,
+          ministry: data.ministry || null,
         }),
       })
       if (!res.ok) {
@@ -101,7 +107,7 @@ export function EditOrderForm({ order, canEdit }: { order: OrderData; canEdit: b
   }
 
   return (
-    <div className="space-y-6">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
       <div className="bg-white rounded-xl p-6 shadow-sm border">
         <p className="text-sm text-zinc-500 mb-4">
           ข้าราชการ: <span className="font-medium text-zinc-700">{order.person.firstName} {order.person.lastName}</span>
@@ -109,69 +115,82 @@ export function EditOrderForm({ order, canEdit }: { order: OrderData; canEdit: b
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="text-xs text-zinc-500">ประเภทคำสั่ง</label>
-            <select value={form.orderType} onChange={(e) => set("orderType", e.target.value)} disabled={!canEdit} className="w-full px-3 py-2 border rounded-lg text-sm mt-1 disabled:bg-zinc-100">
+            <select {...register("orderType")} disabled={!canEdit} className="w-full px-3 py-2 border rounded-lg text-sm mt-1 disabled:bg-zinc-100">
               {typeOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
+            {errors.orderType && <p className="text-xs text-red-500 mt-1">{errors.orderType.message}</p>}
           </div>
           <div>
             <label className="text-xs text-zinc-500">เลขที่คำสั่ง</label>
-            <input value={form.orderNo} onChange={(e) => set("orderNo", e.target.value)} disabled={!canEdit} className="w-full px-3 py-2 border rounded-lg text-sm mt-1 disabled:bg-zinc-100" />
+            <input {...register("orderNo")} disabled={!canEdit} className="w-full px-3 py-2 border rounded-lg text-sm mt-1 disabled:bg-zinc-100" />
+            {errors.orderNo && <p className="text-xs text-red-500 mt-1">{errors.orderNo.message}</p>}
           </div>
           <div>
             <label className="text-xs text-zinc-500">วันที่ลงคำสั่ง</label>
-            <input type="date" value={form.issueDate} onChange={(e) => set("issueDate", e.target.value)} disabled={!canEdit} className="w-full px-3 py-2 border rounded-lg text-sm mt-1 disabled:bg-zinc-100" />
+            <input type="date" {...register("issueDate")} disabled={!canEdit} className="w-full px-3 py-2 border rounded-lg text-sm mt-1 disabled:bg-zinc-100" />
+            {errors.issueDate && <p className="text-xs text-red-500 mt-1">{errors.issueDate.message}</p>}
           </div>
           <div>
             <label className="text-xs text-zinc-500">วันที่มีผล</label>
-            <input type="date" value={form.effectiveDate} onChange={(e) => set("effectiveDate", e.target.value)} disabled={!canEdit} className="w-full px-3 py-2 border rounded-lg text-sm mt-1 disabled:bg-zinc-100" />
+            <input type="date" {...register("effectiveDate")} disabled={!canEdit} className="w-full px-3 py-2 border rounded-lg text-sm mt-1 disabled:bg-zinc-100" />
+            {errors.effectiveDate && <p className="text-xs text-red-500 mt-1">{errors.effectiveDate.message}</p>}
           </div>
           <div>
             <label className="text-xs text-zinc-500">เงินเดือน</label>
-            <input type="number" value={form.salary} onChange={(e) => set("salary", e.target.value)} disabled={!canEdit} className="w-full px-3 py-2 border rounded-lg text-sm mt-1 disabled:bg-zinc-100" />
+            <input type="number" {...register("salary", { valueAsNumber: true })} disabled={!canEdit} className="w-full px-3 py-2 border rounded-lg text-sm mt-1 disabled:bg-zinc-100" />
+            {errors.salary && <p className="text-xs text-red-500 mt-1">{errors.salary.message}</p>}
           </div>
           <div>
             <label className="text-xs text-zinc-500">เงินเดือน ณ วันที่</label>
-            <input type="date" value={form.salaryAsOfDate} onChange={(e) => set("salaryAsOfDate", e.target.value)} disabled={!canEdit} className="w-full px-3 py-2 border rounded-lg text-sm mt-1 disabled:bg-zinc-100" />
+            <input type="date" {...register("salaryAsOfDate")} disabled={!canEdit} className="w-full px-3 py-2 border rounded-lg text-sm mt-1 disabled:bg-zinc-100" />
+            {errors.salaryAsOfDate && <p className="text-xs text-red-500 mt-1">{errors.salaryAsOfDate.message}</p>}
           </div>
           <div>
             <label className="text-xs text-zinc-500">ตำแหน่ง</label>
-            <input value={form.positionName} onChange={(e) => set("positionName", e.target.value)} disabled={!canEdit} className="w-full px-3 py-2 border rounded-lg text-sm mt-1 disabled:bg-zinc-100" />
+            <input {...register("positionName")} disabled={!canEdit} className="w-full px-3 py-2 border rounded-lg text-sm mt-1 disabled:bg-zinc-100" />
+            {errors.positionName && <p className="text-xs text-red-500 mt-1">{errors.positionName.message}</p>}
           </div>
           <div>
             <label className="text-xs text-zinc-500">ประเภทตำแหน่ง</label>
-            <input value={form.positionType} onChange={(e) => set("positionType", e.target.value)} disabled={!canEdit} className="w-full px-3 py-2 border rounded-lg text-sm mt-1 disabled:bg-zinc-100" />
+            <input {...register("positionType")} disabled={!canEdit} className="w-full px-3 py-2 border rounded-lg text-sm mt-1 disabled:bg-zinc-100" />
+            {errors.positionType && <p className="text-xs text-red-500 mt-1">{errors.positionType.message}</p>}
           </div>
           <div>
             <label className="text-xs text-zinc-500">ระดับ</label>
-            <input value={form.positionLevel} onChange={(e) => set("positionLevel", e.target.value)} disabled={!canEdit} className="w-full px-3 py-2 border rounded-lg text-sm mt-1 disabled:bg-zinc-100" />
+            <input {...register("positionLevel")} disabled={!canEdit} className="w-full px-3 py-2 border rounded-lg text-sm mt-1 disabled:bg-zinc-100" />
+            {errors.positionLevel && <p className="text-xs text-red-500 mt-1">{errors.positionLevel.message}</p>}
           </div>
           <div>
             <label className="text-xs text-zinc-500">สังกัด</label>
-            <input value={form.bureau} onChange={(e) => set("bureau", e.target.value)} disabled={!canEdit} className="w-full px-3 py-2 border rounded-lg text-sm mt-1 disabled:bg-zinc-100" />
+            <input {...register("bureau")} disabled={!canEdit} className="w-full px-3 py-2 border rounded-lg text-sm mt-1 disabled:bg-zinc-100" />
+            {errors.bureau && <p className="text-xs text-red-500 mt-1">{errors.bureau.message}</p>}
           </div>
           <div>
             <label className="text-xs text-zinc-500">กอง</label>
-            <input value={form.division} onChange={(e) => set("division", e.target.value)} disabled={!canEdit} className="w-full px-3 py-2 border rounded-lg text-sm mt-1 disabled:bg-zinc-100" />
+            <input {...register("division")} disabled={!canEdit} className="w-full px-3 py-2 border rounded-lg text-sm mt-1 disabled:bg-zinc-100" />
+            {errors.division && <p className="text-xs text-red-500 mt-1">{errors.division.message}</p>}
           </div>
           <div>
             <label className="text-xs text-zinc-500">กรม</label>
-            <input value={form.department} onChange={(e) => set("department", e.target.value)} disabled={!canEdit} className="w-full px-3 py-2 border rounded-lg text-sm mt-1 disabled:bg-zinc-100" />
+            <input {...register("department")} disabled={!canEdit} className="w-full px-3 py-2 border rounded-lg text-sm mt-1 disabled:bg-zinc-100" />
+            {errors.department && <p className="text-xs text-red-500 mt-1">{errors.department.message}</p>}
           </div>
           <div className="col-span-2">
             <label className="text-xs text-zinc-500">กระทรวง</label>
-            <input value={form.ministry} onChange={(e) => set("ministry", e.target.value)} disabled={!canEdit} className="w-full px-3 py-2 border rounded-lg text-sm mt-1 disabled:bg-zinc-100" />
+            <input {...register("ministry")} disabled={!canEdit} className="w-full px-3 py-2 border rounded-lg text-sm mt-1 disabled:bg-zinc-100" />
+            {errors.ministry && <p className="text-xs text-red-500 mt-1">{errors.ministry.message}</p>}
           </div>
         </div>
       </div>
 
       <div className="flex gap-3">
-        <button onClick={handleSubmit} disabled={loading || !canEdit} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50">
+        <button type="submit" disabled={loading || !canEdit} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50">
           💾 บันทึก
         </button>
-        <button onClick={() => router.push(`/orders/${order.id}`)} className="px-4 py-2 border rounded-lg text-sm hover:bg-zinc-50">
+        <button type="button" onClick={() => router.push(`/orders/${order.id}`)} className="px-4 py-2 border rounded-lg text-sm hover:bg-zinc-50">
           ↩️ ยกเลิก
         </button>
       </div>
-    </div>
+    </form>
   )
 }
