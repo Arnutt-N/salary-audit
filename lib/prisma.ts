@@ -16,7 +16,9 @@ export function createPrismaClient() {
     })
     return new PrismaClient({ adapter })
   }
-  return new PrismaClient()
+  return new PrismaClient({
+    datasourceUrl: process.env.DATABASE_URL ?? "file:./dev.db",
+  })
 }
 
 export const prisma = globalForPrisma.prisma ?? createPrismaClient()
