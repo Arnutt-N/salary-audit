@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
     .map((o, i) =>
       [
         i + 1,
-        `"${o.person.firstName ?? ""} ${o.person.lastName ?? ""}"`,
+        `"${o.person?.firstName ?? ""} ${o.person?.lastName ?? ""}"`,
         o.orderNo ?? "",
         o.orderType,
         o.effectiveDate,
