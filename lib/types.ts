@@ -17,7 +17,9 @@ export interface OrderWithPerson {
   positionName: string | null
   positionType: string | null
   positionLevel: string | null
+  createdAt?: Date
   person: {
+    id?: number
     firstName: string | null
     lastName: string | null
   } | null
