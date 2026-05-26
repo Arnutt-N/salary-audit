@@ -1,15 +1,8 @@
 import { prisma } from "@/lib/prisma"
 import Link from "next/link"
+import { EmployeesTable, type EmployeeRow } from "./EmployeesTable"
 
 const PAGE_SIZE = 50
-
-function statusBadge(isActive: boolean, staleCount: number) {
-  if (!isActive)
-    return { label: "⚪ ไม่ประจำการ", cls: "bg-gray-100 text-gray-600" }
-  if (staleCount > 0)
-    return { label: "🔴 มีคำสั่ง stale", cls: "bg-red-50 text-red-700" }
-  return { label: "🟢 ข้อมูลล่าสุด", cls: "bg-green-50 text-green-700" }
-}
 
 export default async function EmployeesPage({
   searchParams,
@@ -76,6 +69,20 @@ export default async function EmployeesPage({
 
   const totalPages = Math.ceil(total / PAGE_SIZE)
 
+  const tableData: EmployeeRow[] = persons.map((p) => ({
+    id: p.id,
+    nameTitle: p.nameTitle,
+    firstName: p.firstName,
+    lastName: p.lastName,
+    currentPositionName: p.currentPositionName,
+    currentPositionType: p.currentPositionType,
+    currentPositionLevel: p.currentPositionLevel,
+    currentBureau: p.currentBureau,
+    orderCount: p._count.orders,
+    isActive: p.isActive,
+    staleCount: staleMap.get(p.id) ?? 0,
+  }))
+
   return (
     <div className="max-w-5xl mx-auto p-6">
       <h1 className="text-2xl font-bold mb-4">👥 ข้าราชการทั้งหมด</h1>
@@ -99,7 +106,7 @@ export default async function EmployeesPage({
         ทั้งหมด {total} คน | หน้า {currentPage} / {totalPages || 1}
       </p>
 
-      {persons.length === 0 ? (
+      {tableData.length === 0 ? (
         <div className="text-center py-12 text-zinc-400">
           <p className="text-lg">ยังไม่มีข้อมูลข้าราชการ</p>
           <p className="text-sm mt-1">
@@ -107,58 +114,7 @@ export default async function EmployeesPage({
           </p>
         </div>
       ) : (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <table className="w-full">
-            <thead className="bg-zinc-50 border-b">
-              <tr>
-                <th className="text-left p-3 text-sm font-medium">#</th>
-                <th className="text-left p-3 text-sm font-medium">ชื่อ-สกุล</th>
-                <th className="text-left p-3 text-sm font-medium">ตำแหน่ง</th>
-                <th className="text-left p-3 text-sm font-medium">สังกัด</th>
-                <th className="text-center p-3 text-sm font-medium">คำสั่ง</th>
-                <th className="text-left p-3 text-sm font-medium">สถานะ</th>
-              </tr>
-            </thead>
-            <tbody>
-              {persons.map((p) => {
-                const stale = staleMap.get(p.id) ?? 0
-                const badge = statusBadge(p.isActive, stale)
-                return (
-                  <tr key={p.id} className="border-b hover:bg-zinc-50">
-                    <td className="p-3 text-sm font-mono text-zinc-400">
-                      {p.id}
-                    </td>
-                    <td className="p-3">
-                      <Link
-                        href={`/employees/${p.id}`}
-                        className="text-blue-600 hover:underline font-medium"
-                      >
-                        {p.nameTitle} {p.firstName} {p.lastName}
-                      </Link>
-                    </td>
-                    <td className="p-3 text-sm">
-                      {p.currentPositionName || "—"}
-                      <div className="text-xs text-zinc-400">
-                        {p.currentPositionType} / {p.currentPositionLevel}
-                      </div>
-                    </td>
-                    <td className="p-3 text-sm">{p.currentBureau || "—"}</td>
-                    <td className="p-3 text-center text-sm">
-                      {p._count.orders}
-                    </td>
-                    <td className="p-3">
-                      <span
-                        className={`text-xs px-2 py-1 rounded-full ${badge.cls}`}
-                      >
-                        {badge.label}
-                      </span>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
+        <EmployeesTable data={tableData} />
       )}
 
       {/* Pagination */}
