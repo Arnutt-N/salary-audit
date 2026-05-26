@@ -14,6 +14,15 @@ export async function GET(request: NextRequest) {
   if (type) where.orderType = type
   if (status) where.orderStatus = status
 
+  const search = searchParams.get("search")
+  if (search) {
+    where.OR = [
+      { orderNo: { contains: search } },
+      { person: { is: { firstName: { contains: search } } } },
+      { person: { is: { lastName: { contains: search } } } },
+    ]
+  }
+
   const [orders, total] = await Promise.all([
     prisma.order.findMany({
       where,
@@ -51,37 +60,42 @@ export async function POST(request: Request) {
         division: body.division ?? null,
         department: body.department ?? null,
         ministry: body.ministry ?? null,
-        orderStatus: "active",
+        orderStatus: body.orderStatus ?? "active",
       },
     })
 
     // Run freshness check + cascade on activation
-    await validateOrderFreshness(order.id)
-    const cascadeCount = await cascadeStaleCheck(order.id)
+    let cascadeCount = 0
+    if (order.orderStatus === "active") {
+      await validateOrderFreshness(order.id)
+      cascadeCount = await cascadeStaleCheck(order.id)
+    }
 
     // Create change log
-    await prisma.employeeChangeLog.create({
-      data: {
-        employeeId: body.employeeId,
-        changeType: body.orderType === "salary_increase" || body.orderType === "special_salary"
-          ? "salary"
-          : body.orderType === "promotion"
-          ? "level"
-          : body.orderType === "transfer"
-          ? "org"
-          : "position",
-        effectiveDate: body.effectiveDate,
-        orderId: order.id,
-        newValue: JSON.stringify({
-          position_name: body.positionName,
-          position_type: body.positionType,
-          position_level: body.positionLevel,
-          bureau: body.bureau,
-          department: body.department,
-          ministry: body.ministry,
-        }),
-      },
-    })
+    if (order.orderStatus === "active") {
+      await prisma.employeeChangeLog.create({
+        data: {
+          employeeId: body.employeeId,
+          changeType: body.orderType === "salary_increase" || body.orderType === "special_salary"
+            ? "salary"
+            : body.orderType === "promotion"
+            ? "level"
+            : body.orderType === "transfer"
+            ? "org"
+            : "position",
+          effectiveDate: body.effectiveDate,
+          orderId: order.id,
+          newValue: JSON.stringify({
+            position_name: body.positionName,
+            position_type: body.positionType,
+            position_level: body.positionLevel,
+            bureau: body.bureau,
+            department: body.department,
+            ministry: body.ministry,
+          }),
+        },
+      })
+    }
 
     return NextResponse.json({ order, cascadeAffected: cascadeCount }, { status: 201 })
   } catch (error) {
