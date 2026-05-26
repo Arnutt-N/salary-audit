@@ -11,7 +11,8 @@ import {
 import { useState } from "react"
 
 interface DataTableProps<T> {
-  columns: ColumnDef<T, unknown>[]
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  columns: ColumnDef<T, any>[]
   data: T[]
 }
 
