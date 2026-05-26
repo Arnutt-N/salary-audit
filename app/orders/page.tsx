@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import Link from "next/link"
-import { toThaiDate } from "@/lib/date-utils"
+import { OrdersTable, type OrderRow } from "./OrdersTable"
 
 const PAGE_SIZE = 50
 
@@ -24,25 +24,6 @@ const statusLabel: Record<string, string> = {
   cancelled: "🚫 เพิกถอน",
   superseded: "🔄 ถูกแทนที่",
   void: "⛔ โมฆะ",
-}
-
-function freshnessBadge(order: {
-  statusSalary: string
-  statusPosition: string
-  statusType: string
-  statusLevel: string
-  statusOrg: string
-  orderStatus: string
-}) {
-  if (order.orderStatus === "superseded") return { label: "🔴 ถูกแก้ไข", cls: "bg-red-50 text-red-700" }
-  const isStale =
-    order.statusSalary === "stale" ||
-    order.statusPosition === "stale" ||
-    order.statusType === "stale" ||
-    order.statusLevel === "stale" ||
-    order.statusOrg === "stale"
-  if (isStale) return { label: "🟡 stale", cls: "bg-amber-50 text-amber-700" }
-  return { label: "🟢 ล่าสุด", cls: "bg-green-50 text-green-700" }
 }
 
 export default async function OrdersPage({
@@ -80,6 +61,22 @@ export default async function OrdersPage({
   ])
 
   const totalPages = Math.ceil(total / PAGE_SIZE)
+
+  const tableData: OrderRow[] = orders.map((o: any) => ({
+    id: o.id,
+    orderType: o.orderType,
+    orderNo: o.orderNo,
+    personId: o.person?.id ?? null,
+    personFirstName: o.person?.firstName ?? null,
+    personLastName: o.person?.lastName ?? null,
+    effectiveDate: o.effectiveDate,
+    orderStatus: o.orderStatus,
+    statusSalary: o.statusSalary,
+    statusPosition: o.statusPosition,
+    statusType: o.statusType,
+    statusLevel: o.statusLevel,
+    statusOrg: o.statusOrg,
+  }))
 
   const queryString = (extra: Record<string, string>) => {
     const p = new URLSearchParams()
@@ -130,59 +127,13 @@ export default async function OrdersPage({
         ทั้งหมด {total} คำสั่ง | หน้า {currentPage} / {totalPages || 1}
       </p>
 
-      {orders.length === 0 ? (
+      {tableData.length === 0 ? (
         <div className="text-center py-12 text-zinc-400">
           <p className="text-lg">ยังไม่มีคำสั่ง</p>
           <p className="text-sm mt-1">เริ่มต้นด้วยการสร้างคำสั่งใหม่</p>
         </div>
       ) : (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <table className="w-full">
-            <thead className="bg-zinc-50 border-b">
-              <tr>
-                <th className="text-left p-3 text-sm font-medium">#</th>
-                <th className="text-left p-3 text-sm font-medium">ประเภท</th>
-                <th className="text-left p-3 text-sm font-medium">เลขที่</th>
-                <th className="text-left p-3 text-sm font-medium">ข้าราชการ</th>
-                <th className="text-left p-3 text-sm font-medium">วันที่มีผล</th>
-                <th className="text-left p-3 text-sm font-medium">สถานะ</th>
-                <th className="text-left p-3 text-sm font-medium">Freshness</th>
-              </tr>
-            </thead>
-            <tbody>
-              {orders.map((o) => {
-                const badge = freshnessBadge(o)
-                return (
-                  <tr key={o.id} className="border-b hover:bg-zinc-50">
-                    <td className="p-3 text-sm font-mono text-zinc-400">{o.id}</td>
-                    <td className="p-3 text-sm">{typeLabel[o.orderType] || o.orderType}</td>
-                    <td className="p-3 text-sm">
-                      <Link href={`/orders/${o.id}`} className="text-blue-600 hover:underline font-medium">
-                        {o.orderNo || `#${o.id}`}
-                      </Link>
-                    </td>
-                    <td className="p-3 text-sm">
-                      <Link href={`/employees/${o.person?.id}`} className="text-blue-600 hover:underline">
-                        {o.person?.firstName} {o.person?.lastName}
-                      </Link>
-                    </td>
-                    <td className="p-3 text-sm font-mono">{toThaiDate(o.effectiveDate)}</td>
-                    <td className="p-3 text-sm">
-                      <span className="text-xs px-2 py-1 rounded-full bg-zinc-100">
-                        {statusLabel[o.orderStatus] || o.orderStatus}
-                      </span>
-                    </td>
-                    <td className="p-3">
-                      <span className={`text-xs px-2 py-1 rounded-full ${badge.cls}`}>
-                        {badge.label}
-                      </span>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
+        <OrdersTable data={tableData} />
       )}
 
       {/* Pagination */}
