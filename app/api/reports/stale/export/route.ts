@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
   const header =
     "ลำดับ,ชื่อ-สกุล,เลขที่คำสั่ง,ประเภท,วันที่มีผล,สถานะคำสั่ง,stale_เงินเดือน,stale_ระดับ,stale_ตำแหน่ง,stale_ประเภท,stale_สังกัด\n"
   const rows = orders
-    .map((o, i) =>
+    .map((o: typeof orders[number], i: number) =>
       [
         i + 1,
         `"${o.person.firstName ?? ""} ${o.person.lastName ?? ""}"`,
