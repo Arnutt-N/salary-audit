@@ -20,32 +20,30 @@ export async function GET(request: NextRequest) {
   if (active === "true") where.isActive = true
   if (active === "false") where.isActive = false
 
-  const [persons, total] = await Promise.all([
-    prisma.person.findMany({
-      where,
-      skip: (page - 1) * PAGE_SIZE,
-      take: PAGE_SIZE,
-      orderBy: { id: "asc" },
-      select: {
-        id: true,
-        nameTitle: true,
-        firstName: true,
-        lastName: true,
-        citizenId: true,
-        currentPositionName: true,
-        currentPositionType: true,
-        currentPositionLevel: true,
-        currentBureau: true,
-        currentDivision: true,
-        currentDepartment: true,
-        currentMinistry: true,
-        currentSalary: true,
-        isActive: true,
-        _count: { select: { orders: true } },
-      },
-    }) as Promise<PersonWithCount[]>,
-    prisma.person.count({ where }),
-  ])
+  const persons = (await prisma.person.findMany({
+    where,
+    skip: (page - 1) * PAGE_SIZE,
+    take: PAGE_SIZE,
+    orderBy: { id: "asc" },
+    select: {
+      id: true,
+      nameTitle: true,
+      firstName: true,
+      lastName: true,
+      citizenId: true,
+      currentPositionName: true,
+      currentPositionType: true,
+      currentPositionLevel: true,
+      currentBureau: true,
+      currentDivision: true,
+      currentDepartment: true,
+      currentMinistry: true,
+      currentSalary: true,
+      isActive: true,
+      _count: { select: { orders: true } },
+    },
+  })) as PersonWithCount[]
+  const total = await prisma.person.count({ where })
 
   // Avoid groupBy (Prisma 7 libSQL compatibility) — fetch stale counts in one query
   const personIds = persons.map((p) => p.id)
