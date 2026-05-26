@@ -10,6 +10,8 @@ export const metadata: Metadata = {
   description: "HR Order Freshness Check System",
 }
 
+export const dynamic = 'force-dynamic'
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="th" suppressHydrationWarning>
